@@ -281,8 +281,8 @@ class MusicGen:
             sections.append(section)
             full_music = torch.cat(sections, axis=-1)
 
-            # Get the last window_len_secs from the full_music as the prompt for the next section
-            prompt = full_music[:, :, -window_len_secs*sample_rate:]
+            # Get the last slide_seconds from the full_music as the prompt for the next section
+            prompt = full_music[:, :, -slide_secs*sample_rate:]
             print("Prompt shape: ", prompt.shape)
 
             # Generate next section with or without melody
