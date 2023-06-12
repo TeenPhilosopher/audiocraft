@@ -141,7 +141,29 @@ class MusicGen:
         attributes, prompt_tokens = self._prepare_tokens_and_attributes(descriptions, None)
         assert prompt_tokens is None
         return self._generate_tokens(attributes, prompt_tokens, progress)
-    
+    def generate_continuation(self, prompt: torch.Tensor, prompt_sample_rate: int,
+                              descriptions: tp.Optional[tp.List[tp.Optional[str]]] = None,
+                              progress: bool = False) -> torch.Tensor:
+        """Generate samples conditioned on audio prompts.
+
+        Args:
+            prompt (torch.Tensor): A batch of waveforms used for continuation.
+                Prompt should be [B, C, T], or [C, T] if only one sample is generated.
+            prompt_sample_rate (int): Sampling rate of the given audio waveforms.
+            descriptions (tp.List[str], optional): A list of strings used as text conditioning. Defaults to None.
+            progress (bool, optional): Flag to display progress of the generation process. Defaults to False.
+        """
+        if prompt.dim() == 2:
+            prompt = prompt[None]
+        if prompt.dim() != 3:
+            raise ValueError("prompt should have 3 dimensions: [B, C, T] (C = 1).")
+        prompt = convert_audio(prompt, prompt_sample_rate, self.sample_rate, self.audio_channels)
+        if descriptions is None:
+            descriptions = [None] * len(prompt)
+        attributes, prompt_tokens = self._prepare_tokens_and_attributes(descriptions, prompt)
+        assert prompt_tokens is not None
+        return self._generate_tokens(attributes, prompt_tokens, progress)
+
     def generate_with_chroma(self, descriptions: tp.List[str], melody_wavs: MelodyType,
                              melody_sample_rate: int, progress: bool = False) -> torch.Tensor:
         """Generate samples conditioned on text and melody.
