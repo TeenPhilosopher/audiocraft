@@ -227,7 +227,7 @@ class MusicGen:
 
         Args:
             description (str): The description to condition the model.
-            melody (tp.Optional[MelodyType]): It's a fucking melody okay?
+            melody (tp.Optional[MelodyType]): The melody to follow if there is one.
             window_len_secs (float): How long each generation should be individually, in seconds.
             total_duration_seconds (float): The total duration for which music should be generated, in seconds.
             slide_seconds (float): The duration by which the window should slide after each generation, in seconds.
