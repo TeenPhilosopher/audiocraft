@@ -290,6 +290,7 @@ class MusicGen:
                 section = self.generate_continuation(prompt, sample_rate, descriptions=[description], progress=progress)
             else:
                 # Calculate the start and end points for the melody slice
+                print("Melody sample rate is: + melody_sr)
                 start_frame = int((len(sections) - 1) * (window_len_secs-slide_secs) * melody_sr) + int(window_len_secs * melody_sr)
                 end_frame = start_frame + int((window_len_secs-slide_secs) * melody_sr)
                 # Slice the melody tensor according to the current time position
