@@ -272,6 +272,8 @@ class MusicGen:
         else:
             section = self.generate_with_chroma([description], melody_wavs=melody, melody_sample_rate=melody_sr, progress=progress)
         sections.append(section)
+        print("Section shape after first generate: ", section.shape)  # This will tell you the shape of the initial section
+
 
         # Generate subsequent sections
         while len(sections) * slide_secs < total_duration_secs:
@@ -281,9 +283,11 @@ class MusicGen:
 
             # Get the last window_len_secs from the full_music as the prompt for the next section
             prompt = full_music[:, :, -window_len_secs*sample_rate:]
+            print("Prompt shape: ", prompt.shape)
 
             # Generate next section with or without melody
             if melody is None:
+                
                 section = self.generate_continuation(prompt, sample_rate, descriptions=[description], progress=progress)
             else:
                 # Calculate the start and end points for the melody slice
@@ -292,10 +296,13 @@ class MusicGen:
                 # Slice the melody tensor according to the current time position
                 melody_slice = melody[:, :, start_frame:end_frame]
                 section = self.generate_continuation_with_melody(prompt, sample_rate, melody_wavs=melody_slice, melody_sample_rate=melody_sr, descriptions=[description], progress=progress)
+            print("Section shape before slicing: ", section.shape)
             section = section[:, :, int(slide_secs*sample_rate):]
+            print("Section shape after slicing: ", section.shape)
 
         # Concatenate all sections one final time to make sure all of them are included
         full_music = torch.cat(sections, axis=-1)
+        print("full_music shape after concatenation: ", full_music.shape)  # This will tell you the shape of the full music tensor after concatenation
 
         return full_music
 
