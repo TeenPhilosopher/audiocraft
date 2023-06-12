@@ -277,7 +277,7 @@ class MusicGen:
 
 
         # Generate subsequent sections
-        while len(sections) * slide_secs < total_duration_secs:
+        while (len(sections) - 1) * (window_len_secs-slide_secs) + window_len_secs < total_duration_secs:
             # Concatenate all sections
             full_music = torch.cat(sections, axis=-1)
 
