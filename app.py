@@ -30,16 +30,11 @@ def predict(model, text, melody, window_len_secs, total_duration_secs, slide_sec
         MODEL = load_model(model)
     print(MODEL.lm.fuser)
     print(MODEL.lm.fuser.fuse2cond)
-    MODEL.set_generation_params(
-        use_sampling=True,
-        top_k=topk,
-        top_p=topp,
-        temperature=temperature,
-        cfg_coef=cfg_coef,
-        duration=duration,
-        wav_and_text_separate=wav_and_text_separate,
-        wav_cfg_proportion=wav_cfg_proportion
-    )
+    MODEL.set_generation_params(use_sampling=True, top_k=topk,
+                              top_p=topp, temperature=temperature,
+                              duration=window_len_secs, cfg_coef=cfg_coef,
+                              wav_and_text_separate=wav_and_text_separate,
+                              wav_cfg_proportion=wav_cfg_proportion)
 
     if melody:
         sr, melody = melody[0], torch.from_numpy(melody[1]).to(MODEL.device).float().t().unsqueeze(0)
