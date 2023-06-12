@@ -375,7 +375,7 @@ class MusicGen:
             print(f'{generated_tokens: 6d} / {tokens_to_generate: 6d}', end='\r')
 
         if prompt_tokens is not None:
-            assert self.generation_params['max_gen_len'] > prompt_tokens.shape[-1], \
+            assert self.generation_params['max_gen_len'] >= prompt_tokens.shape[-1], \
                 "Prompt is longer than audio to generate"
 
         callback = None
