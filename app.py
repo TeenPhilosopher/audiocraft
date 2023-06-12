@@ -23,21 +23,11 @@ def load_model(version):
     return MusicGen.get_pretrained(version)
 
 
-def predict(model, text, melody, duration, topk, topp, temperature, cfg_coef):
+def predict(model, text, melody, window_len_secs, total_duration_secs, slide_secs, topk, topp, temperature, cfg_coef):
     global MODEL
     topk = int(topk)
     if MODEL is None or MODEL.name != model:
         MODEL = load_model(model)
-
-    
-    MODEL.set_generation_params(
-        use_sampling=True,
-        top_k=topk,
-        top_p=topp,
-        temperature=temperature,
-        cfg_coef=cfg_coef,
-        duration=duration,
-    )
 
     if melody:
         sr, melody = melody[0], torch.from_numpy(melody[1]).to(MODEL.device).float().t().unsqueeze(0)
@@ -45,15 +35,8 @@ def predict(model, text, melody, duration, topk, topp, temperature, cfg_coef):
         if melody.dim() == 2:
             melody = melody[None]
         melody = melody[..., :int(sr * MODEL.lm.cfg.dataset.segment_duration)]
-        output = MODEL.generate_with_chroma(
-            descriptions=[text],
-            melody_wavs=melody,
-            melody_sample_rate=sr,
-            progress=False
-        )
-    else:
-        output = MODEL.generate(descriptions=[text], progress=False)
-
+    
+    output = MODEL.generate_music_for_duration(description=text, melody=melody, window_len_secs=window_len_secs, total_duration_secs=total_duration_secs, slide_secs=slide_secs)
     output = output.detach().cpu().float()[0]
     with NamedTemporaryFile("wb", suffix=".wav", delete=False) as file:
         audio_write(
@@ -91,7 +74,10 @@ def ui(**kwargs):
                 with gr.Row():
                     model = gr.Radio(["melody", "medium", "small", "large"], label="Model", value="melody", interactive=True)
                 with gr.Row():
-                    duration = gr.Slider(minimum=1, maximum=1000, value=10, label="Duration", interactive=True)
+                    window_len_secs = gr.Slider(minimum=1, maximum=30, value=10, label="Window length (secs)", interactive=True)
+                    total_duration_secs = gr.Slider(minimum=1, maximum=1000, value=60, label="Total duration (secs)", interactive=True)
+                    slide_secs = gr.Slider(minimum=1, maximum=30, value=5, label="Slide (secs)", interactive=True)
+
                 with gr.Row():
                     topk = gr.Number(label="Top-k", value=250, interactive=True)
                     topp = gr.Number(label="Top-p", value=0, interactive=True)
@@ -99,7 +85,8 @@ def ui(**kwargs):
                     cfg_coef = gr.Number(label="Classifier Free Guidance", value=3.0, interactive=True)
             with gr.Column():
                 output = gr.Video(label="Generated Music")
-        submit.click(predict, inputs=[model, text, melody, duration, topk, topp, temperature, cfg_coef], outputs=[output])
+        submit.click(predict, inputs=[model, text, melody, window_len_secs, total_duration_secs, slide_secs, topk, topp, temperature, cfg_coef], outputs=[output])
+
         gr.Examples(
             fn=predict,
             examples=[
