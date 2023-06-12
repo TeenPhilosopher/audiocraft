@@ -53,11 +53,13 @@ def ui(**kwargs):
         gr.Markdown(
             """
             # MusicGen
-            This is a better version of MusicGen, implementing the long form capability demonstrated in the paper but not given to us by facebook in code. It will be MUCH slower at generating long form content, second per second, than just generating clips of < 30 seconds. This is because it is taking in a certain amount of prior generated audio (by default 20 seconds) and then generating completions for it (which means that after the first thirty seconds, it is generating 30 seconds - sliding_secs length clips, or by default 10 second clips). This is needed for temporal consistency, but makes long term generation (asymptotically) three times slower (you can play with making the sliding_secs parameter lower for quicker generation at the potential cost of temporal inconsistency).
-            
-            Before you ask, no you cannot just directly generate clips longer than 30 seconds. Or, at least, you shouldn't. It's trivial to remove the cap from the source code, but the audio quality degrades to total unusuability after the 30 second (sometimes 35 or even 40 second if you're lucky) mark. As in, it'll go silent and start generating awful screeching white noise. This is not an artificial limitation imposed by Meta -- the model itself is simply not trained to handle longer clips.
-            
-            That being said, the workaround, while slow, generates pretty good audio.
+            The current application serves as an enhanced version of MusicGen, incorporating the long-form generation capabilities highlighted in the research paper, but not provided in the original code by Facebook. It is essential to understand that the generation of long-form content using this approach will inevitably be slower on a per-second basis compared to producing clips shorter than 30 seconds.
+
+The reason for this is that the algorithm ingests a certain amount of previously generated audio (defaulted to 20 seconds) and then generates continuations. As a result, following the first thirty seconds, the model generates audio clips with a length equal to 30 seconds minus the sliding_secs parameter (sliding_secs is defaulted to 20 seconds, so this means that we default to generating 10-second continuations). This mechanism ensures temporal consistency, although it decreases the efficiency of long-term generation by a factor of three, asymptotically. However, you may adjust the sliding_secs parameter for faster generation, with a potential compromise on temporal consistency.
+
+It is crucial to note that modifying the source code to enable direct generation of clips exceeding 30-second length is not advisable. Although the source code allows for straightforward removal of this limit, the audio quality significantly deteriorates past the 30-second point, often resulting in silence or unpleasant screeching white noise after 35 or 40 seconds. This is not an artificial constraint imposed by Meta; it is a limitation of the model's training, which does not cater to longer clips.
+
+Nevertheless, despite its slower pace, this approach provides a viable solution to the issue, yielding high-quality audio output.
             """
         )
         if IS_SHARED_SPACE:
