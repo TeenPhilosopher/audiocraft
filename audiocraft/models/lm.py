@@ -167,6 +167,12 @@ class LMModel(StreamingModule):
         self.transformer = StreamingTransformer(
             d_model=dim, num_heads=num_heads, dim_feedforward=int(hidden_scale * dim),
             norm=norm, norm_first=norm_first, **kwargs)
+        self.d_model = dim
+        self.num_heads = num_heads
+        self.dim_feedforward = int(hidden_scale * dim)
+        self.norm = norm
+        self.norm_first = norm_first
+        self.kwargs = kwargs
         self.out_norm: tp.Optional[nn.Module] = None
         if norm_first:
             self.out_norm = create_norm_fn(norm, dim)
@@ -306,6 +312,16 @@ class LMModel(StreamingModule):
         logits_mask = logits_mask[None, :, :].expand(B, -1, -1)  # [K, T] -> [B, K, T]
         return LMOutput(logits, logits_mask)
 
+    def reset_transformer(self):
+        self.transformer = StreamingTransformer(
+            d_model=self.d_model, 
+            num_heads=self.num_heads, 
+            dim_feedforward=self.dim_feedforward,
+            norm=self.norm, 
+            norm_first=self.norm_first, 
+            **self.kwargs
+        )
+    
     def _sample_next_token(self,
                            sequence: torch.Tensor,
                            cfg_conditions: CFGConditions,
@@ -366,9 +382,9 @@ class LMModel(StreamingModule):
                 sequence_dup = torch.cat([sequence, sequence], dim=0)
                 all_logits_text = model(sequence_dup, conditions=[], condition_tensors=text_cfg_conditions)
                 text_logits, uncond_logits = all_logits_text.split(B, dim=0)  # [B, K, T, card]
-                self.transformer.reset_layers()
                 
                 # pass with wav conditions
+                model.reset_transformer()
                 sequence_dup = torch.cat([sequence, sequence], dim=0)
                 all_logits_wav = model(sequence_dup, conditions=[], condition_tensors=wav_cfg_conditions)
                 wav_logits, uncond_logits = all_logits_wav.split(B, dim=0)  # [B, K, T, card]
