@@ -23,13 +23,23 @@ def load_model(version):
     return MusicGen.get_pretrained(version)
 
 
-def predict(model, text, melody, window_len_secs, total_duration_secs, slide_secs, topk, topp, temperature, cfg_coef):
+def predict(model, text, melody, window_len_secs, total_duration_secs, slide_secs, topk, topp, temperature, cfg_coef,wav_and_text_separate,wav_cfg_proportion):
     global MODEL
     topk = int(topk)
     if MODEL is None or MODEL.name != model:
         MODEL = load_model(model)
     print(MODEL.lm.fuser)
     print(MODEL.lm.fuser.fuse2cond)
+     MODEL.set_generation_params(
+        use_sampling=True,
+        top_k=topk,
+        top_p=topp,
+        temperature=temperature,
+        cfg_coef=cfg_coef,
+        duration=duration,
+        wav_and_text_separate=wav_and_text_separate,
+        wav_cfg_proportion=wav_cfg_proportion
+    )
 
     if melody:
         sr, melody = melody[0], torch.from_numpy(melody[1]).to(MODEL.device).float().t().unsqueeze(0)
@@ -88,9 +98,16 @@ Nevertheless, despite its slower pace, this approach provides a viable solution 
                     topp = gr.Number(label="Top-p", value=0, interactive=True)
                     temperature = gr.Number(label="Temperature", value=1.0, interactive=True)
                     cfg_coef = gr.Number(label="Classifier Free Guidance", value=3.0, interactive=True)
+                with gr.Row():
+                    wav_and_text_separate = gr.Checkbox(label="Separate Wav and Text Conditions", value=False, interactive=True)
+
+                with gr.Dynamic(watch=wav_and_text_separate):
+                    if wav_and_text_separate.value:
+                        wav_cfg_proportion = gr.Slider(minimum=0.0, maximum=1.0, value=0.5, label="Wav CFG Proportion", interactive=True)
+
             with gr.Column():
                 output = gr.Video(label="Generated Music")
-        submit.click(predict, inputs=[model, text, melody, window_len_secs, total_duration_secs, slide_secs, topk, topp, temperature, cfg_coef], outputs=[output])
+        submit.click(predict, inputs=[model, text, melody, window_len_secs, total_duration_secs, slide_secs, topk, topp, temperature, cfg_coef, wav_and_text_separate,wav_cfg_proportion], outputs=[output])
 
         gr.Examples(
             fn=predict,
