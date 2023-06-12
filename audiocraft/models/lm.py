@@ -365,6 +365,7 @@ class LMModel(StreamingModule):
             else:
                 wav_tensors, text_tensors, null_condition_tensors = cfg_conditions
                 wav_logits = model(sequence, conditions=[], condition_tensors=wav_tensors)
+                model.reset_transformer()
                 text_logits = model(sequence, conditions=[], condition_tensors=text_tensors)
             state = self.get_streaming_state()
             self.set_streaming_state(unconditional_state)
