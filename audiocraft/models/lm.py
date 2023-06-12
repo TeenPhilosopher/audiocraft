@@ -474,9 +474,14 @@ class LMModel(StreamingModule):
                     self.condition_provider(self.condition_provider.tokenize(null_conditions)),
                 )
             else:
+                print(f"wav_conditions is {wav_conditions}")
+                print(f"text_conditions is {text_conditions}")
+                print(f"null_conditions is {null_conditions}")
                 conditions = wav_conditions + text_conditions + null_conditions
                 tokenized = self.condition_provider.tokenize(conditions)
+                print(f"tokenized is {tokenized}")
                 cfg_conditions = self.condition_provider(tokenized)
+                print(f"cfg_conditions is {cfg_conditions}")
         else:
             cfg_conditions = {}
 
