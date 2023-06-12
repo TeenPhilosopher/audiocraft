@@ -142,44 +142,6 @@ class MusicGen:
         assert prompt_tokens is None
         return self._generate_tokens(attributes, prompt_tokens, progress)
     
-    def generate_music_for_duration(self, description: str, window_len_secs: float, total_duration_secs: float, slide_secs: float, progress: bool = True) -> torch.Tensor:
-        """
-        Generate music for a longer duration using the MusicGen model.
-
-        Args:
-            description (str): The description to condition the model.
-            window_len_secs (float): How long each generation should be individually, in seconds.
-            total_duration_secs (float): The total duration for which music should be generated, in seconds.
-            slide_secs (float): The duration by which the window should slide after each generation, in seconds.
-            progress (bool, optional): Flag to display progress of the generation process. Defaults to True.
-        Returns:
-            torch.Tensor: Generated audio, of shape [B, C, T], T is defined by the generation params.
-        """
-        if window_len_secs > 30:
-            raise ValueError("MusicGen is absolutely not capable of generating past 30 seconds. Don't do it. Seriously.")
-        self.set_generation_params(duration=window_len_secs)
-        sample_rate = self.sample_rate  # get the sample rate
-        slide_duration_frames = slide_seconds * sample_rate  # slide duration in frames
-
-        # Create a list to store the generated sections
-        sections = []
-
-        # Generate the first section
-        section = self.generate([description],progress=progress)
-        sections.append(section)
-
-        # Generate subsequent sections
-        while len(sections) * window_len_secs < total_duration_seconds:
-            # Get the last 20 seconds from the previous section as the prompt for the next section
-            prompt = sections[-1][:, :, -20*sample_rate:]
-            section = self.generate_continuation(prompt, sample_rate, descriptions=[description], progress=progress)
-            sections.append(section)
-
-        # Concatenate all sections
-        full_music = torch.cat(sections, axis=-1)
-
-        return full_music
-
     def generate_with_chroma(self, descriptions: tp.List[str], melody_wavs: MelodyType,
                              melody_sample_rate: int, progress: bool = False) -> torch.Tensor:
         """Generate samples conditioned on text and melody.
@@ -302,8 +264,8 @@ class MusicGen:
 
         # Generate subsequent sections
         while len(sections) * slide_seconds < total_duration_seconds:
-            # Get the last 20 seconds from the previous section as the prompt for the next section
-            prompt = sections[-1][:, :, -20*sample_rate:]
+            # Get the last window_len_secs from the previous section as the prompt for the next section
+            prompt = sections[-1][:, :, -window_len_secs*sample_rate:]
 
             # Generate next section with or without melody
             if melody_tensor is None:
@@ -315,6 +277,7 @@ class MusicGen:
                 # Slice the melody tensor according to the current time position
                 melody_slice = melody_tensor[:, :, start_frame:end_frame]
                 section = self.generate_continuation_with_melody(prompt, sample_rate, melody_wavs=melody_slice, melody_sample_rate=melody_sr, descriptions=[description], progress=progress)
+            section = section[:, :, int(slide_seconds*sample_rate):]
             sections.append(section)
 
 
