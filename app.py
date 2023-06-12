@@ -53,18 +53,16 @@ def ui(**kwargs):
         gr.Markdown(
             """
             # MusicGen
-            Oppai oppai oppai
-            This is your private demo for [MusicGen](https://github.com/facebookresearch/audiocraft), a simple and controllable model for music generation
-            presented at: ["Simple and Controllable Music Generation"](https://huggingface.co/papers/2306.05284)
+            This is a better version of MusicGen, implementing the long form capability demonstrated in the paper but not given to us by facebook in code. It will be MUCH slower at generating long form content, second per second, than just generating clips of < 30 seconds. This is because it is taking in a certain amount of prior generated audio (by default 20 seconds) and then generating completions for it (which means that after the first thirty seconds, it is generating 30 seconds - sliding_secs length clips, or by default 10 second clips). This is needed for temporal consistency, but makes long term generation (asymptotically) three times slower (you can play with making the sliding_secs parameter lower for quicker generation at the potential cost of temporal inconsistency).
+            
+            Before you ask, no you cannot just directly generate clips longer than 30 seconds. Or, at least, you shouldn't. It's trivial to remove the cap from the source code, but the audio quality degrades to total unusuability after the 30 second (sometimes 35 or even 40 second if you're lucky) mark. As in, it'll go silent and start generating awful screeching white noise. This is not an artificial limitation imposed by Meta -- the model itself is simply not trained to handle longer clips.
+            
+            That being said, the workaround, while slow, generates pretty good audio.
             """
         )
         if IS_SHARED_SPACE:
             gr.Markdown("""
-                ⚠ This Space doesn't work in this shared UI ⚠
-
-                <a href="https://huggingface.co/spaces/musicgen/MusicGen?duplicate=true" style="display: inline-block;margin-top: .5em;margin-right: .25em;" target="_blank">
-                <img style="margin-bottom: 0em;display: inline;margin-top: -.25em;" src="https://bit.ly/3gLdBN6" alt="Duplicate Space"></a>
-                to use it privately, or use the <a href="https://huggingface.co/spaces/facebook/MusicGen">public demo</a>
+                Pew pew pew
                 """)
         with gr.Row():
             with gr.Column():
@@ -76,9 +74,9 @@ def ui(**kwargs):
                 with gr.Row():
                     model = gr.Radio(["melody", "medium", "small", "large"], label="Model", value="melody", interactive=True)
                 with gr.Row():
-                    window_len_secs = gr.Slider(minimum=1, maximum=30, value=10, label="Window length (secs)", interactive=True)
-                    total_duration_secs = gr.Slider(minimum=1, maximum=1000, value=60, label="Total duration (secs)", interactive=True)
-                    slide_secs = gr.Slider(minimum=1, maximum=30, value=5, label="Slide (secs)", interactive=True)
+                    window_len_secs = gr.Slider(minimum=1, maximum=30, value=30, label="Window length (secs)", interactive=True)
+                    total_duration_secs = gr.Slider(minimum=1, maximum=1000, value=70, label="Total duration (secs)", interactive=True)
+                    slide_secs = gr.Slider(minimum=1, maximum=30, value=20, label="Slide (secs)", interactive=True)
 
                 with gr.Row():
                     topk = gr.Number(label="Top-k", value=250, interactive=True)
@@ -125,8 +123,8 @@ def ui(**kwargs):
             """
             ### More details
 
-            The model will generate a short music extract based on the description you provided.
-            You can generate up to INFINITE seconds of audio because fuk limits.
+            The model will generate a short (or long!) music extract based on the description you provided.
+            You can generate up to INFINITE seconds of audio because screw 30 second limits.
 
             We present 4 model variations:
             1. Melody -- a music generation model capable of generating music condition on text and melody inputs. **Note**, you can also use text only.
