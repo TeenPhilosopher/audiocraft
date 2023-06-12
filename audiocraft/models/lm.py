@@ -366,6 +366,7 @@ class LMModel(StreamingModule):
                 sequence_dup = torch.cat([sequence, sequence], dim=0)
                 all_logits_text = model(sequence_dup, conditions=[], condition_tensors=text_cfg_conditions)
                 text_logits, uncond_logits = all_logits_text.split(B, dim=0)  # [B, K, T, card]
+                self.transformer.reset_layers()
                 
                 # pass with wav conditions
                 sequence_dup = torch.cat([sequence, sequence], dim=0)
