@@ -290,7 +290,7 @@ class MusicGen:
                 section = self.generate_continuation(prompt, sample_rate, descriptions=[description], progress=progress)
             else:
                 # Calculate the start and end points for the melody slice
-                print("Melody sample rate is: + melody_sr)
+                print("Melody sample rate is: ", melody_sr)
                 current_time_in_secs = (len(sections) - 1) * (window_len_secs-slide_secs) + window_len_secs
                 start_frame = int(current_time_in_secs * melody_sr)
                 end_frame = start_frame + int(window_len_secs * melody_sr)
@@ -300,8 +300,8 @@ class MusicGen:
                 print("Melody shape: ", melody.shape)
                 melody_slice = melody[:, :, start_frame:end_frame]
                 print("Melody slice shape: ", melody_slice.shape)
-                start_frame = start_frame % melody.shape[2]
-                end_frame = end_frame % melody.shape[2]
+                #start_frame = start_frame % melody.shape[2]
+                #end_frame = end_frame % melody.shape[2]
                 section = self.generate_continuation_with_melody(prompt, sample_rate, melody_wavs=melody_slice, melody_sample_rate=melody_sr, descriptions=[description], progress=progress)
             print("Section shape before slicing: ", section.shape)
             section = section[:, :, int(slide_secs*sample_rate):]
