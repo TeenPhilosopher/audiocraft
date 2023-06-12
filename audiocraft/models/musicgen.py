@@ -142,15 +142,15 @@ class MusicGen:
         assert prompt_tokens is None
         return self._generate_tokens(attributes, prompt_tokens, progress)
     
-    def generate_music_for_duration(self, description: str, window_len_secs: float, total_duration_seconds: float, slide_seconds: float, progress: bool = True) -> torch.Tensor:
+    def generate_music_for_duration(self, description: str, window_len_secs: float, total_duration_secs: float, slide_secs: float, progress: bool = True) -> torch.Tensor:
         """
         Generate music for a longer duration using the MusicGen model.
 
         Args:
             description (str): The description to condition the model.
             window_len_secs (float): How long each generation should be individually, in seconds.
-            total_duration_seconds (float): The total duration for which music should be generated, in seconds.
-            slide_seconds (float): The duration by which the window should slide after each generation, in seconds.
+            total_duration_secs (float): The total duration for which music should be generated, in seconds.
+            slide_secs (float): The duration by which the window should slide after each generation, in seconds.
             progress (bool, optional): Flag to display progress of the generation process. Defaults to True.
         Returns:
             torch.Tensor: Generated audio, of shape [B, C, T], T is defined by the generation params.
