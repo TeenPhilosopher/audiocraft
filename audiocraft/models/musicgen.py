@@ -141,6 +141,41 @@ class MusicGen:
         attributes, prompt_tokens = self._prepare_tokens_and_attributes(descriptions, None)
         assert prompt_tokens is None
         return self._generate_tokens(attributes, prompt_tokens, progress)
+    
+    def generate_music_for_duration(self, description: str, duration_minutes: float, slide_seconds: float) -> torch.Tensor:
+        """
+        Generate music for a longer duration using the MusicGen model.
+
+        Args:
+            description (str): The description to condition the model.
+            duration_minutes (float): The duration for which music should be generated, in minutes.
+            slide_seconds (float): The duration by which the window should slide after each generation, in seconds.
+
+        Returns:
+            torch.Tensor: Generated audio, of shape [B, C, T], T is defined by the generation params.
+        """
+        sample_rate = self.sample_rate  # get the sample rate
+        total_duration_seconds = duration_minutes * 60  # total duration in seconds
+        slide_duration_frames = slide_seconds * sample_rate  # slide duration in frames
+
+        # Create a list to store the generated sections
+        sections = []
+
+        # Generate the first section
+        section = self.generate([description])
+        sections.append(section)
+
+        # Generate subsequent sections
+        while len(sections) * slide_seconds < total_duration_seconds:
+            # Get the last 20 seconds from the previous section as the prompt for the next section
+            prompt = sections[-1][:, :, -20*sample_rate:]
+            section = self.generate_continuation(prompt, sample_rate, descriptions=[description])
+            sections.append(section)
+
+        # Concatenate all sections
+        full_music = torch.cat(sections, axis=-1)
+
+        return full_music
 
     def generate_with_chroma(self, descriptions: tp.List[str], melody_wavs: MelodyType,
                              melody_sample_rate: int, progress: bool = False) -> torch.Tensor:
