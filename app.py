@@ -34,7 +34,7 @@ def predict(model, text, melody, window_len_secs, total_duration_secs, slide_sec
         print(melody.shape)
         if melody.dim() == 2:
             melody = melody[None]
-        melody = melody[..., :int(sr * MODEL.lm.cfg.dataset.segment_duration)]
+        melody = melody[..., :int(sr * total_duration_secs)]
     else:
         sr, melody = None, None
     
