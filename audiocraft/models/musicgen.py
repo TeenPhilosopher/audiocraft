@@ -105,7 +105,8 @@ class MusicGen:
     def set_generation_params(self, use_sampling: bool = True, top_k: int = 250,
                               top_p: float = 0.0, temperature: float = 1.0,
                               duration: float = 30.0, cfg_coef: float = 3.0,
-                              two_step_cfg: bool = False):
+                              two_step_cfg: bool = False, wav_and_text_separate: bool = False,
+                              wav_cfg_proportion: float = 0.5):
         """Set the generation parameters for MusicGen.
 
         Args:
@@ -127,6 +128,8 @@ class MusicGen:
             'top_p': top_p,
             'cfg_coef': cfg_coef,
             'two_step_cfg': two_step_cfg,
+            'wav_and_text_separate': wav_and_text_separate,
+            'wav_cfg_proportion': wav_cfg_proportion
         }
 
     def generate_unconditional(self, num_samples: int, progress: bool = False) -> torch.Tensor:
