@@ -213,15 +213,20 @@ class MusicGen:
         assert prompt_tokens is None
         return self._generate_tokens(attributes, prompt_tokens, progress)
 
-    def generate_continuation(self, prompt: torch.Tensor, prompt_sample_rate: int,
+    def generate_continuation_with_melody(self, prompt: torch.Tensor, prompt_sample_rate: int, melody_wavs: MelodyType, melody_sample_rate: int,
                               descriptions: tp.Optional[tp.List[tp.Optional[str]]] = None,
                               progress: bool = False) -> torch.Tensor:
-        """Generate samples conditioned on audio prompts.
+        """Generate samples conditioned on audio prompts and melody.
 
         Args:
             prompt (torch.Tensor): A batch of waveforms used for continuation.
                 Prompt should be [B, C, T], or [C, T] if only one sample is generated.
             prompt_sample_rate (int): Sampling rate of the given audio waveforms.
+            melody_wavs: (torch.Tensor or list of Tensor): A batch of waveforms used as
+                melody conditioning. Should have shape [B, C, T] with B matching the description length,
+                C=1 or 2. It can be [C, T] if there is a single description. It can also be
+                a list of [C, T] tensors.
+            melody_sample_rate: (int): Sample rate of the melody waveforms.
             descriptions (tp.List[str], optional): A list of strings used as text conditioning. Defaults to None.
             progress (bool, optional): Flag to display progress of the generation process. Defaults to False.
         """
@@ -230,11 +235,94 @@ class MusicGen:
         if prompt.dim() != 3:
             raise ValueError("prompt should have 3 dimensions: [B, C, T] (C = 1).")
         prompt = convert_audio(prompt, prompt_sample_rate, self.sample_rate, self.audio_channels)
+
+        if isinstance(melody_wavs, torch.Tensor):
+            if melody_wavs.dim() == 2:
+                melody_wavs = melody_wavs[None]
+            if melody_wavs.dim() != 3:
+                raise ValueError("Melody wavs should have a shape [B, C, T].")
+            melody_wavs = list(melody_wavs)
+        else:
+            for melody in melody_wavs:
+                if melody is not None:
+                    assert melody.dim() == 2, "One melody in the list has the wrong number of dims."
+        melody_wavs = [
+            convert_audio(wav, melody_sample_rate, self.sample_rate, self.audio_channels)
+            if wav is not None else None
+            for wav in melody_wavs]
+
         if descriptions is None:
             descriptions = [None] * len(prompt)
-        attributes, prompt_tokens = self._prepare_tokens_and_attributes(descriptions, prompt)
+
+        attributes, prompt_tokens = self._prepare_tokens_and_attributes(descriptions=descriptions, prompt=prompt, melody_wavs=melody_wavs)
         assert prompt_tokens is not None
         return self._generate_tokens(attributes, prompt_tokens, progress)
+
+    
+    def generate_music_for_duration(self, description: str, melody: Optional[Tuple[int, np.ndarray]], window_len_secs: float, total_duration_seconds: float, slide_seconds: float, progress: bool = True) -> torch.Tensor:
+        """
+        Generate music for a longer duration using the MusicGen model.
+
+        Args:
+            description (str): The description to condition the model.
+            melody (Optional[Tuple[int, np.ndarray]]): A tuple of sample rate and the melody waveform. None if no melody is provided.
+            window_len_secs (float): How long each generation should be individually, in seconds.
+            total_duration_seconds (float): The total duration for which music should be generated, in seconds.
+            slide_seconds (float): The duration by which the window should slide after each generation, in seconds.
+            progress (bool, optional): Flag to display progress of the generation process. Defaults to True.
+
+        Returns:
+            torch.Tensor: Generated audio, of shape [B, C, T], T is defined by the generation params.
+        """
+        if window_len_secs > 30:
+            raise ValueError("MusicGen is absolutely not capable of generating past 30 seconds. Don't do it. Seriously.")
+        self.set_generation_params(duration=window_len_secs)
+        sample_rate = self.sample_rate  # get the sample rate
+        slide_duration_frames = slide_seconds * sample_rate  # slide duration in frames
+
+        # Create a list to store the generated sections
+        sections = []
+
+        # Convert melody to the right format if it is provided
+        if melody:
+            melody_sr, melody_data = melody
+            melody_tensor = torch.from_numpy(melody_data).to(self.device).float().t().unsqueeze(0)
+            if melody_tensor.dim() == 2:
+                melody_tensor = melody_tensor[None]
+            melody_tensor = melody_tensor[..., :int(melody_sr * self.lm.cfg.dataset.segment_duration)]
+        else:
+            melody_tensor = None
+
+        # Generate the first section
+        if melody_tensor is None:
+            section = self.generate([description], progress=progress)
+        else:
+            section = self.generate_with_chroma([description], melody_wavs=melody_tensor, melody_sample_rate=melody_sr, progress=progress)
+        sections.append(section)
+
+        # Generate subsequent sections
+        while len(sections) * slide_seconds < total_duration_seconds:
+            # Get the last 20 seconds from the previous section as the prompt for the next section
+            prompt = sections[-1][:, :, -20*sample_rate:]
+
+            # Generate next section with or without melody
+            if melody_tensor is None:
+                section = self.generate_continuation(prompt, sample_rate, descriptions=[description], progress=progress)
+            else:
+                # Calculate the start and end points for the melody slice
+                start_frame = int(len(sections) * slide_seconds * sample_rate)
+                end_frame = start_frame + int(window_len_secs * sample_rate)
+                # Slice the melody tensor according to the current time position
+                melody_slice = melody_tensor[:, :, start_frame:end_frame]
+                section = self.generate_continuation_with_melody(prompt, sample_rate, melody_wavs=melody_slice, melody_sample_rate=melody_sr, descriptions=[description], progress=progress)
+            sections.append(section)
+
+
+        # Concatenate all sections
+        full_music = torch.cat(sections, axis=-1)
+
+        return full_music
+
 
     @torch.no_grad()
     def _prepare_tokens_and_attributes(
