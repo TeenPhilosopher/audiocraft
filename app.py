@@ -35,6 +35,7 @@ def predict(model, text, melody, window_len_secs, total_duration_secs, slide_sec
                               duration=window_len_secs, cfg_coef=cfg_coef,
                               wav_and_text_separate=wav_and_text_separate,
                               wav_cfg_proportion=wav_cfg_proportion)
+    print(MODEL.generation_params['cfg_coef'])
 
     if melody:
         sr, melody = melody[0], torch.from_numpy(melody[1]).to(MODEL.device).float().t().unsqueeze(0)
