@@ -275,8 +275,12 @@ class MusicGen:
 
         # Generate subsequent sections
         while len(sections) * slide_secs < total_duration_secs:
-            # Get the last window_len_secs from the previous section as the prompt for the next section
-            prompt = sections[-1][:, :, -window_len_secs*sample_rate:]
+            # Concatenate all sections
+            sections.append(section)
+            full_music = torch.cat(sections, axis=-1)
+
+            # Get the last window_len_secs from the full_music as the prompt for the next section
+            prompt = full_music[:, :, -window_len_secs*sample_rate:]
 
             # Generate next section with or without melody
             if melody is None:
@@ -289,10 +293,8 @@ class MusicGen:
                 melody_slice = melody[:, :, start_frame:end_frame]
                 section = self.generate_continuation_with_melody(prompt, sample_rate, melody_wavs=melody_slice, melody_sample_rate=melody_sr, descriptions=[description], progress=progress)
             section = section[:, :, int(slide_secs*sample_rate):]
-            sections.append(section)
 
-
-        # Concatenate all sections
+        # Concatenate all sections one final time to make sure all of them are included
         full_music = torch.cat(sections, axis=-1)
 
         return full_music
