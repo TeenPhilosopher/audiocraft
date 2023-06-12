@@ -178,6 +178,9 @@ class LMModel(StreamingModule):
             self.out_norm = create_norm_fn(norm, dim)
         self.linears = nn.ModuleList([nn.Linear(dim, self.card, bias=bias_proj) for _ in range(n_q)])
         self._init_weights(weight_init, depthwise_init, zero_bias_init)
+        self.weight_init = weight_init
+        self.depthwise_init = depthwise_init
+        self.zero_bias_init = zero_bias_init
         self._fsdp: tp.Optional[nn.Module]
         self.__dict__['_fsdp'] = None
 
@@ -321,6 +324,7 @@ class LMModel(StreamingModule):
             norm_first=self.norm_first, 
             **self.kwargs
         )
+        self._init_weights(self.weight_init, self.depthwise_init, self.zero_bias_init)
     
     def _sample_next_token(self,
                            sequence: torch.Tensor,
