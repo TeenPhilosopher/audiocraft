@@ -160,7 +160,7 @@ class LMModel(StreamingModule):
         self.n_q = n_q
         self.dim = dim
         self.pattern_provider = pattern_provider
-        self.two_step_cfg = two_step_cfg
+        self.two_step_cfg = True
         self.emb = nn.ModuleList([ScaledEmbedding(embed_dim, dim, lr=emb_lr) for _ in range(n_q)])
         if 'activation' in kwargs:
             kwargs['activation'] = get_activation_fn(kwargs['activation'])
