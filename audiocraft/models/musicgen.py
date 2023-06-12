@@ -110,7 +110,6 @@ class MusicGen:
                 instead of batching together the two. This has some impact on how things
                 are padded but seems to have little impact in practice.
         """
-        assert duration <= 30, "The MusicGen cannot generate more than 30 seconds"
         self.generation_params = {
             'max_gen_len': int(duration * self.frame_rate),
             'use_sampling': use_sampling,
