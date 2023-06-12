@@ -221,7 +221,7 @@ class MusicGen:
         return self._generate_tokens(attributes, prompt_tokens, progress)
 
     
-    def generate_music_for_duration(self, description: str, melody: tp.Optional[MelodyType], window_len_secs: float, total_duration_seconds: float, slide_seconds: float, progress: bool = True) -> torch.Tensor:
+    def generate_music_for_duration(self, description: str, melody: tp.Optional[MelodyType], window_len_secs: float, total_duration_secs: float, slide_secs: float, progress: bool = True) -> torch.Tensor:
         """
         Generate music for a longer duration using the MusicGen model.
 
@@ -229,8 +229,8 @@ class MusicGen:
             description (str): The description to condition the model.
             melody (tp.Optional[MelodyType]): The melody to follow if there is one.
             window_len_secs (float): How long each generation should be individually, in seconds.
-            total_duration_seconds (float): The total duration for which music should be generated, in seconds.
-            slide_seconds (float): The duration by which the window should slide after each generation, in seconds.
+            total_duration_secs (float): The total duration for which music should be generated, in seconds.
+            slide_secs (float): The duration by which the window should slide after each generation, in seconds.
             progress (bool, optional): Flag to display progress of the generation process. Defaults to True.
 
         Returns:
@@ -240,7 +240,7 @@ class MusicGen:
             raise ValueError("MusicGen is absolutely not capable of generating past 30 seconds. Don't do it. Seriously.")
         self.set_generation_params(duration=window_len_secs)
         sample_rate = self.sample_rate  # get the sample rate
-        slide_duration_frames = slide_seconds * sample_rate  # slide duration in frames
+        slide_duration_frames = slide_secs * sample_rate  # slide duration in frames
 
         # Create a list to store the generated sections
         sections = []
@@ -252,7 +252,7 @@ class MusicGen:
         sections.append(section)
 
         # Generate subsequent sections
-        while len(sections) * slide_seconds < total_duration_seconds:
+        while len(sections) * slide_secs < total_duration_secs:
             # Get the last window_len_secs from the previous section as the prompt for the next section
             prompt = sections[-1][:, :, -window_len_secs*sample_rate:]
 
@@ -261,12 +261,12 @@ class MusicGen:
                 section = self.generate_continuation(prompt, sample_rate, descriptions=[description], progress=progress)
             else:
                 # Calculate the start and end points for the melody slice
-                start_frame = int(len(sections) * slide_seconds * sample_rate)
+                start_frame = int(len(sections) * slide_secs * sample_rate)
                 end_frame = start_frame + int(window_len_secs * sample_rate)
                 # Slice the melody tensor according to the current time position
                 melody_slice = melody[:, :, start_frame:end_frame]
                 section = self.generate_continuation_with_melody(prompt, sample_rate, melody_wavs=melody_slice, melody_sample_rate=melody_sr, descriptions=[description], progress=progress)
-            section = section[:, :, int(slide_seconds*sample_rate):]
+            section = section[:, :, int(slide_secs*sample_rate):]
             sections.append(section)
 
 
