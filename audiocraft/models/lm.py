@@ -314,7 +314,9 @@ class LMModel(StreamingModule):
                            temp: float = 1.0,
                            top_k: int = 0,
                            top_p: float = 0.0,
-                           cfg_coef: tp.Optional[float] = None) -> torch.Tensor:
+                           cfg_coef: tp.Optional[float] = None,
+                           wav_and_text_separate: bool = False,
+                           wav_cfg_proportion: float = 0.5) -> torch.Tensor:
         """Sample next token from the model given a sequence and a set of conditions. The model supports
         multiple sampling strategies (greedy sampling, softmax, top-k, top-p...).
 
@@ -337,28 +339,49 @@ class LMModel(StreamingModule):
         model = self if self._fsdp is None else self._fsdp
         if self.two_step_cfg and cfg_conditions != {}:
             assert isinstance(cfg_conditions, tuple)
-            condition_tensors, null_condition_tensors = cfg_conditions
-            cond_logits = model(sequence, conditions=[], condition_tensors=condition_tensors)
+            if not wav_and_text_separate:
+                condition_tensors, null_condition_tensors = cfg_conditions
+                cond_logits = model(sequence, conditions=[], condition_tensors=condition_tensors)
+            else:
+                wav_tensors, text_tensors, null_condition_tensors = cfg_conditions
+                wav_logits = model(sequence, conditions=[], condition_tensors=wav_tensors)
+                text_logits = model(sequence, conditions=[], condition_tensors=text_tensors)
             state = self.get_streaming_state()
             self.set_streaming_state(unconditional_state)
             uncond_logits = model(sequence, conditions=[], condition_tensors=null_condition_tensors)
             unconditional_state.update(self.get_streaming_state())
             self.set_streaming_state(state)
-            logits = uncond_logits + (cond_logits - uncond_logits) * self.cfg_coef
+            if not wav_and_text_separate:
+                logits = uncond_logits + (cond_logits - uncond_logits) * self.cfg_coef
+            else:
+                logits = uncond_logits + (wav_cfg_proportion*wav_logits + (1-wav_cfg_proportion)*text_logits - uncond_logits) * self.cfg_coef
         else:
             assert isinstance(cfg_conditions, dict)
-            condition_tensors = cfg_conditions
-            if condition_tensors:
-                # Preparing for CFG, predicting both conditional and unconditional logits.
-                sequence = torch.cat([sequence, sequence], dim=0)
-            all_logits = model(
-                sequence,
-                conditions=[], condition_tensors=condition_tensors)
-            if condition_tensors:
-                cond_logits, uncond_logits = all_logits.split(B, dim=0)  # [B, K, T, card]
-                logits = uncond_logits + (cond_logits - uncond_logits) * cfg_coef
+            if cfg_conditions and wav_and_text_separate:
+                wav_tensors, text_tensors, null_condition_tensors= cfg_conditions
+
+                # pass with wav conditions
+                condition_tensors = {**wav_tensors, **null_condition_tensors} # merging wav and null tensors
+                sequence_dup = torch.cat([sequence, sequence], dim=0)
+                all_logits_wav = model(sequence_dup, conditions=[], condition_tensors=condition_tensors)
+                wav_logits, uncond_logits = all_logits_wav.split(B, dim=0)  # [B, K, T, card]
+
+                # pass with text conditions
+                condition_tensors = {**text_tensors, **null_condition_tensors} # merging text and null tensors
+                all_logits_text = model(sequence_dup, conditions=[], condition_tensors=condition_tensors)
+                text_logits, uncond_logits = all_logits_text.split(B, dim=0)  # [B, K, T, card]
+
+                # combining the logits
+                logits = uncond_logits + (wav_cfg_proportion*wav_logits + (1-wav_cfg_proportion)*text_logits - uncond_logits) * self.cfg_coef
             else:
-                logits = all_logits
+                sequence_dup = torch.cat([sequence, sequence], dim=0)
+                all_logits = model(sequence_dup, conditions=[], condition_tensors=cfg_conditions)
+                if cfg_conditions:
+                    cond_logits, uncond_logits = all_logits.split(B, dim=0)  # [B, K, T, card]
+                    logits = uncond_logits + (cond_logits - uncond_logits) * self.cfg_coef
+                else:
+                    logits = all_logits
+
 
         logits = logits.permute(0, 1, 3, 2)  # [B, K, card, T]
         logits = logits[..., -1]  # [B x K x card]
@@ -390,7 +413,9 @@ class LMModel(StreamingModule):
                  two_step_cfg: bool = False,
                  remove_prompts: bool = False,
                  check: bool = False,
-                 callback: tp.Optional[tp.Callable[[int, int], None]] = None) -> torch.Tensor:
+                 callback: tp.Optional[tp.Callable[[int, int], None]] = None,
+                 wav_and_text_separate: bool = False,
+                 wav_cfg_proportion: float = 0.5) -> torch.Tensor:
         """Generate tokens sampling from the model given a prompt or unconditionally. Generation can
         be perform in a greedy fashion or using sampling with top K and top P strategies.
 
@@ -488,7 +513,7 @@ class LMModel(StreamingModule):
                 # sample next token from the model, next token shape is [B, K, 1]
                 next_token = self._sample_next_token(
                     curr_sequence, cfg_conditions, unconditional_state, use_sampling, temp, top_k, top_p,
-                    cfg_coef=cfg_coef)
+                    cfg_coef=cfg_coef, wav_and_text_separate=wav_and_text_separate, wav_cfg_proportion=wav_cfg_proportion)
                 # ensure the tokens that should be masked are properly set to special_token_id
                 # as the model never output special_token_id
                 valid_mask = mask[..., offset:offset+1].expand(B, -1, -1)
