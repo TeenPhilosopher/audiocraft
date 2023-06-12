@@ -221,13 +221,13 @@ class MusicGen:
         return self._generate_tokens(attributes, prompt_tokens, progress)
 
     
-    def generate_music_for_duration(self, description: str, melody: Optional[Tuple[int, np.ndarray]], window_len_secs: float, total_duration_seconds: float, slide_seconds: float, progress: bool = True) -> torch.Tensor:
+    def generate_music_for_duration(self, description: str, melody: tp.Optional[Tuple[int, np.ndarray]], window_len_secs: float, total_duration_seconds: float, slide_seconds: float, progress: bool = True) -> torch.Tensor:
         """
         Generate music for a longer duration using the MusicGen model.
 
         Args:
             description (str): The description to condition the model.
-            melody (Optional[Tuple[int, np.ndarray]]): A tuple of sample rate and the melody waveform. None if no melody is provided.
+            melody (tp.Optional[Tuple[int, np.ndarray]]): A tuple of sample rate and the melody waveform. None if no melody is provided.
             window_len_secs (float): How long each generation should be individually, in seconds.
             total_duration_seconds (float): The total duration for which music should be generated, in seconds.
             slide_seconds (float): The duration by which the window should slide after each generation, in seconds.
