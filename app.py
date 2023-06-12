@@ -29,8 +29,7 @@ def predict(model, text, melody, duration, topk, topp, temperature, cfg_coef):
     if MODEL is None or MODEL.name != model:
         MODEL = load_model(model)
 
-    if duration > MODEL.lm.cfg.dataset.segment_duration:
-        raise gr.Error("MusicGen currently supports durations of up to 30 seconds!")
+    
     MODEL.set_generation_params(
         use_sampling=True,
         top_k=topk,
@@ -69,6 +68,7 @@ def ui(**kwargs):
         gr.Markdown(
             """
             # MusicGen
+            Oppai oppai oppai
             This is your private demo for [MusicGen](https://github.com/facebookresearch/audiocraft), a simple and controllable model for music generation
             presented at: ["Simple and Controllable Music Generation"](https://huggingface.co/papers/2306.05284)
             """
@@ -91,7 +91,7 @@ def ui(**kwargs):
                 with gr.Row():
                     model = gr.Radio(["melody", "medium", "small", "large"], label="Model", value="melody", interactive=True)
                 with gr.Row():
-                    duration = gr.Slider(minimum=1, maximum=30, value=10, label="Duration", interactive=True)
+                    duration = gr.Slider(minimum=1, maximum=1000, value=10, label="Duration", interactive=True)
                 with gr.Row():
                     topk = gr.Number(label="Top-k", value=250, interactive=True)
                     topp = gr.Number(label="Top-p", value=0, interactive=True)
@@ -137,7 +137,7 @@ def ui(**kwargs):
             ### More details
 
             The model will generate a short music extract based on the description you provided.
-            You can generate up to 30 seconds of audio.
+            You can generate up to INFINITE seconds of audio because fuk limits.
 
             We present 4 model variations:
             1. Melody -- a music generation model capable of generating music condition on text and melody inputs. **Note**, you can also use text only.
