@@ -287,12 +287,11 @@ class MusicGen:
 
             # Generate next section with or without melody
             if melody is None:
-                
                 section = self.generate_continuation(prompt, sample_rate, descriptions=[description], progress=progress)
             else:
                 # Calculate the start and end points for the melody slice
-                start_frame = int(len(sections) * slide_secs * sample_rate)
-                end_frame = start_frame + int(window_len_secs * sample_rate)
+                start_frame = int((len(sections) - 1) * (window_len_secs-slide_secs) * sample_rate) + int(window_len_secs * sample_rate)
+                end_frame = start_frame + int((window_len_secs-slide_secs) * sample_rate)
                 # Slice the melody tensor according to the current time position
                 melody_slice = melody[:, :, start_frame:end_frame]
                 section = self.generate_continuation_with_melody(prompt, sample_rate, melody_wavs=melody_slice, melody_sample_rate=melody_sr, descriptions=[description], progress=progress)
