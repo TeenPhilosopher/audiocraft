@@ -165,14 +165,14 @@ class MusicGen:
         sections = []
 
         # Generate the first section
-        section = self.generate([description])
+        section = self.generate([description],progress=progress)
         sections.append(section)
 
         # Generate subsequent sections
         while len(sections) * window_len_secs < total_duration_seconds:
             # Get the last 20 seconds from the previous section as the prompt for the next section
             prompt = sections[-1][:, :, -20*sample_rate:]
-            section = self.generate_continuation(prompt, sample_rate, descriptions=[description])
+            section = self.generate_continuation(prompt, sample_rate, descriptions=[description], progress=progress)
             sections.append(section)
 
         # Concatenate all sections
