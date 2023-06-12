@@ -358,17 +358,15 @@ class LMModel(StreamingModule):
         else:
             assert isinstance(cfg_conditions, dict)
             if cfg_conditions and wav_and_text_separate:
-                wav_tensors, text_tensors, null_condition_tensors= cfg_conditions
+                wav_cfg_conditions, text_cfg_conditions = cfg_conditions
 
                 # pass with wav conditions
-                condition_tensors = {**wav_tensors, **null_condition_tensors} # merging wav and null tensors
                 sequence_dup = torch.cat([sequence, sequence], dim=0)
-                all_logits_wav = model(sequence_dup, conditions=[], condition_tensors=condition_tensors)
+                all_logits_wav = model(sequence_dup, conditions=[], condition_tensors=wav_cfg_conditions)
                 wav_logits, uncond_logits = all_logits_wav.split(B, dim=0)  # [B, K, T, card]
 
                 # pass with text conditions
-                condition_tensors = {**text_tensors, **null_condition_tensors} # merging text and null tensors
-                all_logits_text = model(sequence_dup, conditions=[], condition_tensors=condition_tensors)
+                all_logits_text = model(sequence_dup, conditions=[], condition_tensors=text_cfg_conditions)
                 text_logits, uncond_logits = all_logits_text.split(B, dim=0)  # [B, K, T, card]
 
                 # combining the logits
@@ -477,10 +475,12 @@ class LMModel(StreamingModule):
                 print(f"wav_conditions is {wav_conditions}")
                 print(f"text_conditions is {text_conditions}")
                 print(f"null_conditions is {null_conditions}")
-                conditions = wav_conditions + text_conditions + null_conditions
-                tokenized = self.condition_provider.tokenize(conditions)
+                wav_conditions = wav_conditions + null_conditions
+                text_conditions = text_conditions + null_conditions
+                wav_tokenized = self.condition_provider.tokenize(wav_conditions)
+                text_tokenized = self.condition_provider.tokenize(text_conditions)
                 print(f"tokenized is {tokenized}")
-                cfg_conditions = self.condition_provider(tokenized)
+                cfg_conditions = [self.condition_provider(wav_tokenized),self.condition_provider(text_tokenized)]
                 print(f"cfg_conditions is {cfg_conditions}")
         else:
             cfg_conditions = {}
