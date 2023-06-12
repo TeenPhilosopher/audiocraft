@@ -100,10 +100,7 @@ Nevertheless, despite its slower pace, this approach provides a viable solution 
                     cfg_coef = gr.Number(label="Classifier Free Guidance", value=3.0, interactive=True)
                 with gr.Row():
                     wav_and_text_separate = gr.Checkbox(label="Separate Wav and Text Conditions", value=False, interactive=True)
-
-                with gr.Dynamic(watch=wav_and_text_separate):
-                    if wav_and_text_separate.value:
-                        wav_cfg_proportion = gr.Slider(minimum=0.0, maximum=1.0, value=0.5, label="Wav CFG Proportion", interactive=True)
+                    wav_cfg_proportion = gr.Slider(minimum=0.0, maximum=1.0, value=0.5, label="Wav CFG Proportion (valid if 'Separate Wav and Text Conditions' is checked)", interactive=True)
 
             with gr.Column():
                 output = gr.Video(label="Generated Music")
