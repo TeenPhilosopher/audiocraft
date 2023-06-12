@@ -35,8 +35,10 @@ def predict(model, text, melody, window_len_secs, total_duration_secs, slide_sec
         if melody.dim() == 2:
             melody = melody[None]
         melody = melody[..., :int(sr * MODEL.lm.cfg.dataset.segment_duration)]
+    else:
+        sr, melody = None, None
     
-    output = MODEL.generate_music_for_duration(description=text, melody=melody, window_len_secs=window_len_secs, total_duration_secs=total_duration_secs, slide_secs=slide_secs)
+    output = MODEL.generate_music_for_duration(description=text, melody=melody, melody_sr=sr, window_len_secs=window_len_secs, total_duration_secs=total_duration_secs, slide_secs=slide_secs)
     output = output.detach().cpu().float()[0]
     with NamedTemporaryFile("wb", suffix=".wav", delete=False) as file:
         audio_write(
