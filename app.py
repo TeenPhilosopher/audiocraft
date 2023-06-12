@@ -30,7 +30,7 @@ def predict(model, text, melody, window_len_secs, total_duration_secs, slide_sec
         MODEL = load_model(model)
     print(MODEL.lm.fuser)
     print(MODEL.lm.fuser.fuse2cond)
-     MODEL.set_generation_params(
+    MODEL.set_generation_params(
         use_sampling=True,
         top_k=topk,
         top_p=topp,
