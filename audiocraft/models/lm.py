@@ -462,6 +462,9 @@ class LMModel(StreamingModule):
         two_step_cfg = self.two_step_cfg if two_step_cfg is None else two_step_cfg
         if conditions:
             null_conditions = ClassifierFreeGuidanceDropout(p=1.0)(conditions)
+            print(f"null conditions are {null_conditions}")
+            print(f"two step cfg are {two_step_cfg}")
+            print(f"conditions are {conditions}")
             if two_step_cfg:
                 cfg_conditions = (
                     self.condition_provider(self.condition_provider.tokenize(conditions)),
