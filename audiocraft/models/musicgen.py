@@ -273,11 +273,11 @@ class MusicGen:
         """
         if window_len_secs > 30:
             raise ValueError("MusicGen is absolutely not capable of generating past 30 seconds. Don't do it. Seriously.")
-        self.set_generation_params(use_sampling=self.use_sampling, top_k=self.top_k,
-                              top_p=self.top_p, temperature=self.temperature,
-                              duration=window_len_secs, cfg_coef=self.cfg_coef,
-                              two_step_cfg=self.two_step_cfg, wav_and_text_separate=self.wav_and_text_separate,
-                              wav_cfg_proportion=self.wav_cfg_proportion)
+        self.set_generation_params(use_sampling=self.generation_params['use_sampling'], top_k=self.generation_params['top_k'],
+                              top_p=self.generation_params['top_p'], temperature=self.generation_params['temperature'],
+                              duration=window_len_secs, cfg_coef=self.generation_params['cfg_coef'],
+                              two_step_cfg=self.generation_params['two_step_cfg'], wav_and_text_separate=self.generation_params['wav_and_text_separate'],
+                              wav_cfg_proportion=self.generation_params['wav_cfg_proportion'])
         sample_rate = self.sample_rate  # get the sample rate
         slide_duration_frames = slide_secs * sample_rate  # slide duration in frames
 
