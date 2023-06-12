@@ -481,7 +481,7 @@ class LMModel(StreamingModule):
         # the padding structure is exactly the same between train anf test.
         # With a batch size of 1, this can be slower though.
         cfg_conditions: CFGConditions
-        two_step_cfg = self.two_step_cfg if two_step_cfg is None else two_step_cfg
+        two_step_cfg = True
         if conditions:
             null_conditions = ClassifierFreeGuidanceDropout(p=1.0)(conditions)
             print(f"null conditions are {null_conditions}")
