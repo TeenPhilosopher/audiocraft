@@ -465,13 +465,16 @@ class LMModel(StreamingModule):
             print(f"null conditions are {null_conditions}")
             print(f"two step cfg are {two_step_cfg}")
             print(f"conditions are {conditions}")
+            wav_conditions = [ConditioningAttributes(wav=cond['wav']) for cond in conditions]
+            text_conditions = [ConditioningAttributes(text=cond['text']) for cond in conditions]
             if two_step_cfg:
                 cfg_conditions = (
-                    self.condition_provider(self.condition_provider.tokenize(conditions)),
+                    self.condition_provider(self.condition_provider.tokenize(wav_conditions)),
+                    self.condition_provider(self.condition_provider.tokenize(text_conditions)),
                     self.condition_provider(self.condition_provider.tokenize(null_conditions)),
                 )
             else:
-                conditions = conditions + null_conditions
+                conditions = wav_conditions + text_conditions + null_conditions
                 tokenized = self.condition_provider.tokenize(conditions)
                 cfg_conditions = self.condition_provider(tokenized)
         else:
