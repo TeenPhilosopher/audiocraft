@@ -53,7 +53,8 @@ def ui(**kwargs):
         gr.Markdown(
             """
             # MusicGen
-            The current application serves as an enhanced version of MusicGen, incorporating the long-form generation capabilities highlighted in the research paper, but not provided in the original code by Facebook. It is essential to understand that the generation of long-form content using this approach will inevitably be slower on a per-second basis compared to producing clips shorter than 30 seconds.
+            
+The current application serves as an enhanced version of MusicGen, incorporating the long-form generation capabilities highlighted in the research paper, but not provided in the original code by Facebook. It is essential to understand that the generation of long-form content using this approach will inevitably be slower on a per-second basis compared to producing clips shorter than 30 seconds.
 
 The reason for this is that the algorithm ingests a certain amount of previously generated audio (defaulted to 20 seconds) and then generates continuations. As a result, following the first thirty seconds, the model generates audio clips with a length equal to 30 seconds minus the sliding_secs parameter (sliding_secs is defaulted to 20 seconds, so this means that we default to generating 10-second continuations). This mechanism ensures temporal consistency, although it decreases the efficiency of long-term generation by a factor of three, asymptotically. However, you may adjust the sliding_secs parameter for faster generation, with a potential compromise on temporal consistency.
 
