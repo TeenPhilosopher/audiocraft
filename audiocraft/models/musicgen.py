@@ -278,7 +278,6 @@ class MusicGen:
         # Generate subsequent sections
         while len(sections) * slide_secs < total_duration_secs:
             # Concatenate all sections
-            sections.append(section)
             full_music = torch.cat(sections, axis=-1)
 
             # Get the last slide_seconds from the full_music as the prompt for the next section
@@ -299,6 +298,8 @@ class MusicGen:
             print("Section shape before slicing: ", section.shape)
             section = section[:, :, int(slide_secs*sample_rate):]
             print("Section shape after slicing: ", section.shape)
+            
+            sections.append(section)
 
         # Concatenate all sections one final time to make sure all of them are included
         full_music = torch.cat(sections, axis=-1)
