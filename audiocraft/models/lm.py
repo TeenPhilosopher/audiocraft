@@ -360,14 +360,16 @@ class LMModel(StreamingModule):
                 wav_cfg_conditions, text_cfg_conditions = cfg_conditions
                 assert isinstance(wav_cfg_conditions, dict)
                 assert isinstance(text_cfg_conditions, dict)
-                # pass with wav conditions
                 sequence_dup = torch.cat([sequence, sequence], dim=0)
-                all_logits_wav = model(sequence_dup, conditions=[], condition_tensors=wav_cfg_conditions)
-                wav_logits, uncond_logits = all_logits_wav.split(B, dim=0)  # [B, K, T, card]
+                
 
                 # pass with text conditions
                 all_logits_text = model(sequence_dup, conditions=[], condition_tensors=text_cfg_conditions)
                 text_logits, uncond_logits = all_logits_text.split(B, dim=0)  # [B, K, T, card]
+                
+                # pass with wav conditions
+                all_logits_wav = model(sequence_dup, conditions=[], condition_tensors=wav_cfg_conditions)
+                wav_logits, uncond_logits = all_logits_wav.split(B, dim=0)  # [B, K, T, card]
 
                 # combining the logits
                 logits = uncond_logits + (wav_cfg_proportion*wav_logits + (1-wav_cfg_proportion)*text_logits - uncond_logits) * self.cfg_coef
