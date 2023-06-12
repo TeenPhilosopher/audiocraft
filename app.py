@@ -28,6 +28,8 @@ def predict(model, text, melody, window_len_secs, total_duration_secs, slide_sec
     topk = int(topk)
     if MODEL is None or MODEL.name != model:
         MODEL = load_model(model)
+    print(MODEL.fuser)
+    print(MODEL.fuser.fuse2cond)
 
     if melody:
         sr, melody = melody[0], torch.from_numpy(melody[1]).to(MODEL.device).float().t().unsqueeze(0)
