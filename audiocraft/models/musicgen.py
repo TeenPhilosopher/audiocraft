@@ -175,7 +175,7 @@ class MusicGen:
         assert prompt_tokens is None
         return self._generate_tokens(attributes, prompt_tokens, progress)
 
-    def generate_continuation_with_melody(self, prompt: torch.Tensor = None, prompt_sample_rate: int, melody_wavs: MelodyType, melody_sample_rate: int,
+    def generate_continuation_with_melody(self, prompt: torch.Tensor, prompt_sample_rate: int, melody_wavs: MelodyType, melody_sample_rate: int,
                               descriptions: tp.Optional[tp.List[tp.Optional[str]]] = None,
                               progress: bool = False) -> torch.Tensor:
         """Generate samples conditioned on audio prompts and melody.
