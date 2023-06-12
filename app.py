@@ -106,7 +106,7 @@ Nevertheless, despite its slower pace, this approach provides a viable solution 
             examples=[
                 [
                     "An 80s driving pop song with heavy drums and synth pads in the background",
-                    "./assets/bach.mp3",
+                    "./assets/bachshort.mp3",
                     "melody"
                 ],
                 [
@@ -121,7 +121,7 @@ Nevertheless, despite its slower pace, this approach provides a viable solution 
                 ],
                 [
                     "a light and cheerly EDM track, with syncopated drums, aery pads, and strong emotions",
-                    "./assets/bach.mp3",
+                    "./assets/bachshort.mp3",
                     "melody"
                 ],
                 [
