@@ -175,7 +175,7 @@ class MusicGen:
         assert prompt_tokens is None
         return self._generate_tokens(attributes, prompt_tokens, progress)
 
-    def generate_continuation_with_melody(self, prompt: torch.Tensor, prompt_sample_rate: int, melody_wavs: MelodyType, melody_sample_rate: int,
+    def generate_continuation_with_melody(self, prompt: torch.Tensor = None, prompt_sample_rate: int, melody_wavs: MelodyType, melody_sample_rate: int,
                               descriptions: tp.Optional[tp.List[tp.Optional[str]]] = None,
                               progress: bool = False) -> torch.Tensor:
         """Generate samples conditioned on audio prompts and melody.
@@ -221,13 +221,13 @@ class MusicGen:
         return self._generate_tokens(attributes, prompt_tokens, progress)
 
     
-    def generate_music_for_duration(self, description: str, melody: MelodyType, window_len_secs: float, total_duration_seconds: float, slide_seconds: float, progress: bool = True) -> torch.Tensor:
+    def generate_music_for_duration(self, description: str, melody: tp.Optional[MelodyType], window_len_secs: float, total_duration_seconds: float, slide_seconds: float, progress: bool = True) -> torch.Tensor:
         """
         Generate music for a longer duration using the MusicGen model.
 
         Args:
             description (str): The description to condition the model.
-            melody (MelodyType): A tuple of sample rate and the melody waveform. None if no melody is provided.
+            melody (tp.Optional[MelodyType]): It's a fucking melody okay?
             window_len_secs (float): How long each generation should be individually, in seconds.
             total_duration_seconds (float): The total duration for which music should be generated, in seconds.
             slide_seconds (float): The duration by which the window should slide after each generation, in seconds.
@@ -244,22 +244,11 @@ class MusicGen:
 
         # Create a list to store the generated sections
         sections = []
-
-        # Convert melody to the right format if it is provided
-        if melody:
-            melody_sr, melody_data = melody
-            melody_tensor = torch.from_numpy(melody_data).to(self.device).float().t().unsqueeze(0)
-            if melody_tensor.dim() == 2:
-                melody_tensor = melody_tensor[None]
-            melody_tensor = melody_tensor[..., :int(melody_sr * self.lm.cfg.dataset.segment_duration)]
-        else:
-            melody_tensor = None
-
         # Generate the first section
-        if melody_tensor is None:
+        if melody is None:
             section = self.generate([description], progress=progress)
         else:
-            section = self.generate_with_chroma([description], melody_wavs=melody_tensor, melody_sample_rate=melody_sr, progress=progress)
+            section = self.generate_with_chroma([description], melody_wavs=melody, melody_sample_rate=melody_sr, progress=progress)
         sections.append(section)
 
         # Generate subsequent sections
@@ -268,14 +257,14 @@ class MusicGen:
             prompt = sections[-1][:, :, -window_len_secs*sample_rate:]
 
             # Generate next section with or without melody
-            if melody_tensor is None:
+            if melody is None:
                 section = self.generate_continuation(prompt, sample_rate, descriptions=[description], progress=progress)
             else:
                 # Calculate the start and end points for the melody slice
                 start_frame = int(len(sections) * slide_seconds * sample_rate)
                 end_frame = start_frame + int(window_len_secs * sample_rate)
                 # Slice the melody tensor according to the current time position
-                melody_slice = melody_tensor[:, :, start_frame:end_frame]
+                melody_slice = melody[:, :, start_frame:end_frame]
                 section = self.generate_continuation_with_melody(prompt, sample_rate, melody_wavs=melody_slice, melody_sample_rate=melody_sr, descriptions=[description], progress=progress)
             section = section[:, :, int(slide_seconds*sample_rate):]
             sections.append(section)
