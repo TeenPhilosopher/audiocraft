@@ -160,27 +160,18 @@ class LMModel(StreamingModule):
         self.n_q = n_q
         self.dim = dim
         self.pattern_provider = pattern_provider
-        self.two_step_cfg = True
+        self.two_step_cfg = two_step_cfg
         self.emb = nn.ModuleList([ScaledEmbedding(embed_dim, dim, lr=emb_lr) for _ in range(n_q)])
         if 'activation' in kwargs:
             kwargs['activation'] = get_activation_fn(kwargs['activation'])
         self.transformer = StreamingTransformer(
             d_model=dim, num_heads=num_heads, dim_feedforward=int(hidden_scale * dim),
             norm=norm, norm_first=norm_first, **kwargs)
-        self.d_model = dim
-        self.num_heads = num_heads
-        self.dim_feedforward = int(hidden_scale * dim)
-        self.norm = norm
-        self.norm_first = norm_first
-        self.kwargs = kwargs
         self.out_norm: tp.Optional[nn.Module] = None
         if norm_first:
             self.out_norm = create_norm_fn(norm, dim)
         self.linears = nn.ModuleList([nn.Linear(dim, self.card, bias=bias_proj) for _ in range(n_q)])
         self._init_weights(weight_init, depthwise_init, zero_bias_init)
-        self.weight_init = weight_init
-        self.depthwise_init = depthwise_init
-        self.zero_bias_init = zero_bias_init
         self._fsdp: tp.Optional[nn.Module]
         self.__dict__['_fsdp'] = None
 
@@ -315,17 +306,6 @@ class LMModel(StreamingModule):
         logits_mask = logits_mask[None, :, :].expand(B, -1, -1)  # [K, T] -> [B, K, T]
         return LMOutput(logits, logits_mask)
 
-    def reset_transformer(self):
-        self.transformer = StreamingTransformer(
-            d_model=self.d_model, 
-            num_heads=self.num_heads, 
-            dim_feedforward=self.dim_feedforward,
-            norm=self.norm, 
-            norm_first=self.norm_first, 
-            **self.kwargs
-        )
-        self._init_weights(self.weight_init, self.depthwise_init, self.zero_bias_init)
-    
     def _sample_next_token(self,
                            sequence: torch.Tensor,
                            cfg_conditions: CFGConditions,
@@ -365,7 +345,6 @@ class LMModel(StreamingModule):
             else:
                 wav_tensors, text_tensors, null_condition_tensors = cfg_conditions
                 wav_logits = model(sequence, conditions=[], condition_tensors=wav_tensors)
-                model.reset_transformer()
                 text_logits = model(sequence, conditions=[], condition_tensors=text_tensors)
             state = self.get_streaming_state()
             self.set_streaming_state(unconditional_state)
@@ -377,22 +356,20 @@ class LMModel(StreamingModule):
             else:
                 logits = uncond_logits + (wav_cfg_proportion*wav_logits + (1-wav_cfg_proportion)*text_logits - uncond_logits) * self.cfg_coef
         else:
+            assert isinstance(cfg_conditions, dict)
             if cfg_conditions and wav_and_text_separate:
-                wav_cfg_conditions, text_cfg_conditions = cfg_conditions
-                assert isinstance(wav_cfg_conditions, dict)
-                assert isinstance(text_cfg_conditions, dict)
-                
+                wav_tensors, text_tensors, null_condition_tensors= cfg_conditions
+
+                # pass with wav conditions
+                condition_tensors = {**wav_tensors, **null_condition_tensors} # merging wav and null tensors
+                sequence_dup = torch.cat([sequence, sequence], dim=0)
+                all_logits_wav = model(sequence_dup, conditions=[], condition_tensors=condition_tensors)
+                wav_logits, uncond_logits = all_logits_wav.split(B, dim=0)  # [B, K, T, card]
 
                 # pass with text conditions
-                sequence_dup = torch.cat([sequence, sequence], dim=0)
-                all_logits_text = model(sequence_dup, conditions=[], condition_tensors=text_cfg_conditions)
+                condition_tensors = {**text_tensors, **null_condition_tensors} # merging text and null tensors
+                all_logits_text = model(sequence_dup, conditions=[], condition_tensors=condition_tensors)
                 text_logits, uncond_logits = all_logits_text.split(B, dim=0)  # [B, K, T, card]
-                
-                # pass with wav conditions
-                model.reset_transformer()
-                sequence_dup = torch.cat([sequence, sequence], dim=0)
-                all_logits_wav = model(sequence_dup, conditions=[], condition_tensors=wav_cfg_conditions)
-                wav_logits, uncond_logits = all_logits_wav.split(B, dim=0)  # [B, K, T, card]
 
                 # combining the logits
                 logits = uncond_logits + (wav_cfg_proportion*wav_logits + (1-wav_cfg_proportion)*text_logits - uncond_logits) * self.cfg_coef
@@ -482,31 +459,18 @@ class LMModel(StreamingModule):
         # the padding structure is exactly the same between train anf test.
         # With a batch size of 1, this can be slower though.
         cfg_conditions: CFGConditions
-        two_step_cfg = True
+        two_step_cfg = self.two_step_cfg if two_step_cfg is None else two_step_cfg
         if conditions:
             null_conditions = ClassifierFreeGuidanceDropout(p=1.0)(conditions)
-            print(f"null conditions are {null_conditions}")
-            print(f"two step cfg are {two_step_cfg}")
-            print(f"conditions are {conditions}")
-            wav_conditions = [ConditioningAttributes(wav=cond['wav'],text=null_conditions[0]['text']) for cond in conditions]
-            text_conditions = [ConditioningAttributes(text=cond['text'],wav=null_conditions[0]['wav']) for cond in conditions]
             if two_step_cfg:
                 cfg_conditions = (
-                    self.condition_provider(self.condition_provider.tokenize(wav_conditions)),
-                    self.condition_provider(self.condition_provider.tokenize(text_conditions)),
+                    self.condition_provider(self.condition_provider.tokenize(conditions)),
                     self.condition_provider(self.condition_provider.tokenize(null_conditions)),
                 )
             else:
-                print(f"wav_conditions is {wav_conditions}")
-                print(f"text_conditions is {text_conditions}")
-                print(f"null_conditions is {null_conditions}")
-                wav_conditions = wav_conditions + null_conditions
-                text_conditions = text_conditions + null_conditions
-                wav_tokenized = self.condition_provider.tokenize(wav_conditions)
-                text_tokenized = self.condition_provider.tokenize(text_conditions)
-                print(f"tokenized is {wav_tokenized}")
-                cfg_conditions = [self.condition_provider(wav_tokenized),self.condition_provider(text_tokenized)]
-                print(f"cfg_conditions is {cfg_conditions}")
+                conditions = conditions + null_conditions
+                tokenized = self.condition_provider.tokenize(conditions)
+                cfg_conditions = self.condition_provider(tokenized)
         else:
             cfg_conditions = {}
 
